@@ -3,11 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Flip Example</title>
+    <title>Directory Listing on Button Click</title>
 </head>
 <body>
-    <h1>Upside Down Image Example</h1>
-    <img src="lena.png" alt="Lena">
-    <button onclick="fetch('/hello')">Click me</button>
+    <button id="listButton">Click me</button>
+    <script>
+        document.getElementById('listButton').addEventListener('click', function() {
+            fetch('/listdir')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('listButton').textContent = 'Directory List: ' + data.join(', ');
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    </script>
 </body>
 </html>
