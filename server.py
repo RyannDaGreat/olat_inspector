@@ -1,30 +1,30 @@
 from http.server import SimpleHTTPRequestHandler, HTTPServer
-from PIL import Image
-from io import BytesIO
+import traceback
 
 class CustomHandler(SimpleHTTPRequestHandler):
+    @staticmethod
+    def load_image(path):
+        """Load an image from a given path."""
+        image=load_image(path)
+        image=rotate_image(image,45)
+        image=blend_images(image,cv_inpaint_image(image))
+        return image
+        
+
     def send_head(self):
         path = self.translate_path(self.path)
-        f = None
-        if path.endswith(".jpg") or path.endswith(".png"):  # Add other image formats if needed
+        if is_image_file(path):  # Use the provided is_image_file function to check if it's an image
             try:
-                # Open the image, flip it and save to buffer
-                img = Image.open(path)
-                img = img.transpose(Image.FLIP_TOP_BOTTOM)
-                buffer = BytesIO()
-                img_format = 'JPEG' if path.endswith('.jpg') else 'PNG'
-                img.save(buffer, format=img_format)
-                buffer.seek(0)
-                f = buffer
-                # Set the content type
-                ctype = 'image/jpeg' if img_format == 'JPEG' else 'image/png'
+                image = self.load_image(path)  # Load the image from file
+                encoded_image = encode_image_to_bytes(image, filetype='png')  # Encode image as PNG
                 self.send_response(200)
-                self.send_header("Content-type", ctype)
-                self.send_header("Content-Length", str(len(buffer.getvalue())))
+                self.send_header("Content-type", 'image/png')
+                self.send_header("Content-Length", str(len(encoded_image)))
                 self.end_headers()
-                return f
-            except IOError:
-                self.send_error(404, "File not found")
+                return encoded_image
+            except Exception as e:
+                error_message = f"ERROR: {traceback.format_exc()}"
+                self.send_error(500, error_message)
                 return None
         else:
             return super().send_head()
@@ -40,9 +40,8 @@ class CustomHandler(SimpleHTTPRequestHandler):
             f = self.send_head()
             if f:
                 try:
-                    self.copyfile(f, self.wfile)
-                finally:
-                    if isinstance(f, BytesIO):
-                        f.close()
+                    self.wfile.write(f)
+                except Exception as e:
+                    print(f"Failed to send file: {e}")
 
 HTTPServer(('', 8000), CustomHandler).serve_forever()
